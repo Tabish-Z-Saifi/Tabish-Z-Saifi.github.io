@@ -6,7 +6,7 @@
    - Firebase/Google endpoints → NOT intercepted. Firestore has its own offline
      persistence; interfering with auth/firestore requests breaks them.
 */
-const CACHE = 'guest-list-v2';
+const CACHE = 'guest-list-v3';
 const JSPDF_URL = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
 const ASSETS = [
   './',
@@ -15,6 +15,7 @@ const ASSETS = [
   './manifest.json',
   './icon.svg',
   './icon-192.png',
+  './Icons/logo-mark-transparent.svg',
   './js/app.js',
   './js/store.js',
   './js/firebase.js',
