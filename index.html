@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#7a1f3d" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Guest List" />
+  <title>Wedding Guest List</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
+  <link rel="icon" href="icon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
+</head>
+<body>
+
+  <!-- ============ SETUP SCREEN (shown until js/config.js is filled in) ============ -->
+  <div id="screen-setup" class="screen center-screen" hidden>
+    <div class="auth-card">
+      <div class="auth-logo">💍</div>
+      <h1>One-time setup needed</h1>
+      <p class="hint">This app needs a (free) Firebase project to sync your guest list across devices.</p>
+      <ol class="help-list">
+        <li>Go to <b>console.firebase.google.com</b> → Add project</li>
+        <li><b>Authentication</b> → enable <b>Email/Password</b> and <b>Google</b></li>
+        <li><b>Firestore Database</b> → Create database</li>
+        <li>In Firestore → <b>Rules</b>, paste the contents of <code>firestore.rules</code> → Publish</li>
+        <li>Project settings → Your apps → <b>Web</b> → copy the config into <code>js/config.js</code></li>
+        <li>Authentication → Settings → <b>Authorized domains</b> → add your GitHub Pages domain</li>
+      </ol>
+      <p class="hint">Full steps are in <code>README.md</code>. Reload this page when done.</p>
+    </div>
+  </div>
+
+  <!-- ============ AUTH SCREEN ============ -->
+  <div id="screen-auth" class="screen center-screen" hidden>
+    <div class="auth-card">
+      <div class="auth-logo">💍</div>
+      <h1>Wedding Guest List</h1>
+      <p class="hint" id="authSubtitle">Sign in to your family's guest list</p>
+
+      <form id="authForm">
+        <input type="email" id="authEmail" placeholder="Email" autocomplete="email" required />
+        <input type="password" id="authPassword" placeholder="Password" autocomplete="current-password" required minlength="6" />
+        <div class="auth-error" id="authError" hidden></div>
+        <button type="submit" class="btn-primary full" id="authSubmit">Sign In</button>
+      </form>
+
+      <button class="btn-google full" id="googleBtn">
+        <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.1H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 8 3l5.7-5.7C34.1 6.1 29.3 4 24 4 13 4 4 13 4 24s9 20 20 20 20-9 20-20c0-1.3-.1-2.6-.4-3.9z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 8 3l5.7-5.7C34.1 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.1H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C41 35.4 44 30.2 44 24c0-1.3-.1-2.6-.4-3.9z"/></svg>
+        Continue with Google
+      </button>
+
+      <div class="auth-links">
+        <button class="link-btn" id="authToggle">New here? Create an account</button>
+        <button class="link-btn" id="forgotBtn">Forgot password?</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ ONBOARDING (no account yet) ============ -->
+  <div id="screen-onboard" class="screen center-screen" hidden>
+    <div class="auth-card">
+      <div class="auth-logo">🎊</div>
+      <h1>Welcome!</h1>
+      <p class="hint">Set up a wedding, or join one you were invited to.</p>
+
+      <div class="seg" id="onboardSeg">
+        <button type="button" data-val="create" class="active">Create wedding</button>
+        <button type="button" data-val="join">Join with code</button>
+      </div>
+
+      <form id="onboardCreate" class="onboard-form">
+        <input type="text" id="obAccountName" placeholder="Wedding name (e.g. Tabish's Wedding)" required />
+        <input type="text" id="obCreateProfile" placeholder="Your name (e.g. Tabish)" required />
+        <button type="submit" class="btn-primary full">Create</button>
+      </form>
+
+      <form id="onboardJoin" class="onboard-form" hidden>
+        <input type="text" id="obJoinCode" placeholder="Invite code" autocapitalize="characters" required />
+        <input type="text" id="obJoinProfile" placeholder="Your name (e.g. Ammi)" required />
+        <button type="submit" class="btn-primary full">Join</button>
+      </form>
+
+      <div class="auth-error" id="onboardError" hidden></div>
+      <div class="auth-links">
+        <button class="link-btn" id="onboardSignOut">Sign out</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ MAIN APP ============ -->
+  <div id="screen-app" class="screen" hidden>
+    <header class="app-header">
+      <div class="brand">
+        <span class="brand-mark">❤</span>
+        <span class="brand-text" id="brandText">Guest List</span>
+        <span class="offline-dot" id="offlineDot" title="Offline — changes will sync later" hidden></span>
+      </div>
+      <div class="header-count" id="headerCount"></div>
+    </header>
+
+    <main id="main">
+
+      <!-- Dashboard -->
+      <section id="view-dashboard" class="view active">
+        <h1 class="view-title">Dashboard</h1>
+
+        <div class="card progress-card">
+          <div class="progress-head">
+            <span>Invitations Done</span>
+            <span id="progressLabel">0 / 0</span>
+          </div>
+          <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+          <div class="progress-sub">
+            <span class="pill done"><b id="statDone">0</b> done</span>
+            <span class="pill pending"><b id="statPending">0</b> not yet</span>
+          </div>
+        </div>
+
+        <div class="stat-grid">
+          <div class="card stat"><div class="stat-num" id="statGuests">0</div><div class="stat-lbl">Families</div></div>
+          <div class="card stat"><div class="stat-num" id="statPeople">0</div><div class="stat-lbl">Total People</div></div>
+          <div class="card stat"><div class="stat-num" id="statAccom">0</div><div class="stat-lbl">Need Stay</div></div>
+          <div class="card stat"><div class="stat-num" id="statConvey">0</div><div class="stat-lbl">Need Barat Ride</div></div>
+        </div>
+
+        <h2 class="section-title">People per Function</h2>
+        <div class="card" id="dashFunctions"><p class="empty-mini">No functions yet.</p></div>
+
+        <h2 class="section-title">People per City</h2>
+        <div class="card" id="dashCities"><p class="empty-mini">No guests yet.</p></div>
+      </section>
+
+      <!-- Guests -->
+      <section id="view-guests" class="view">
+        <h1 class="view-title">Guests</h1>
+
+        <div class="search-row">
+          <input type="search" id="searchInput" placeholder="Search by name…" autocomplete="off" />
+          <button class="btn-filter" id="filterToggle" aria-label="Filters">⚙︎<span class="filter-badge" id="filterBadge"></span></button>
+        </div>
+
+        <div class="filters" id="filtersPanel" hidden>
+          <label>City <select id="fCity"><option value="">All</option></select></label>
+          <label>Function <select id="fFunction"><option value="">All</option></select></label>
+          <label>Status
+            <select id="fStatus">
+              <option value="">All</option><option value="done">Done</option><option value="pending">Not Yet</option>
+            </select>
+          </label>
+          <label>Type
+            <select id="fType">
+              <option value="">All</option><option value="WhatsApp + Call">WhatsApp + Call</option><option value="In-Person Card">In-Person Card</option>
+            </select>
+          </label>
+          <label>Accommodation <select id="fAccom"><option value="">All</option><option value="yes">Yes</option><option value="no">No</option></select></label>
+          <label>Conveyance <select id="fConvey"><option value="">All</option><option value="yes">Yes</option><option value="no">No</option></select></label>
+          <button class="btn-ghost full" id="clearFilters">Clear filters</button>
+        </div>
+
+        <div class="list-meta" id="listMeta"></div>
+        <div id="guestList"></div>
+      </section>
+
+      <!-- Functions -->
+      <section id="view-functions" class="view">
+        <h1 class="view-title">Functions</h1>
+        <p class="hint">Add the events for your wedding. New functions start as “Not Invited” for everyone.</p>
+        <div class="add-row">
+          <input type="text" id="newFunctionInput" placeholder="e.g. Mehendi, Barat, Reception…" />
+          <button class="btn-primary" id="addFunctionBtn">Add</button>
+        </div>
+        <div id="functionList"></div>
+      </section>
+
+      <!-- More -->
+      <section id="view-more" class="view">
+        <h1 class="view-title">More</h1>
+
+        <div class="card">
+          <h2 class="card-title" id="accountNameLbl">Account</h2>
+          <p class="hint" id="profileLbl"></p>
+          <button class="btn-secondary" id="signOutBtn">Sign out</button>
+        </div>
+
+        <div class="card">
+          <h2 class="card-title">Family access</h2>
+          <p class="hint">Everyone here can view and edit this guest list.</p>
+          <div id="membersList"></div>
+          <button class="btn-primary full" id="createInviteBtn">＋ Invite a family member</button>
+        </div>
+
+        <div class="card">
+          <h2 class="card-title">WhatsApp invitation</h2>
+          <p class="hint">Upload your invitation card and message once. Then tap <b>Invite</b> on any “WhatsApp + Call” guest to share it.</p>
+          <img id="invPreview" class="inv-preview" alt="Invitation card preview" hidden />
+          <div class="btn-stack">
+            <button class="btn-secondary" id="invImageBtn">🖼 Upload invitation card image</button>
+            <input type="file" id="invImageInput" accept="image/*" hidden />
+            <textarea id="invMessage" rows="4" placeholder="Personal message sent with the card… e.g. 'With immense joy we invite you to…'"></textarea>
+            <button class="btn-primary" id="invSaveBtn">Save invitation</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2 class="card-title">Export</h2>
+          <div class="btn-stack">
+            <button class="btn-primary" id="exportPdfBtn">📄 Export to PDF (by city)</button>
+            <button class="btn-secondary" id="exportJsonBtn">⬇︎ Download backup (JSON)</button>
+          </div>
+          <p class="hint" style="margin-top:10px">Syncing is automatic now — every change is saved to the cloud and appears on all family members' devices. The JSON backup is just a safety copy.</p>
+        </div>
+
+        <div class="card danger-zone">
+          <h2 class="card-title">Danger zone</h2>
+          <button class="btn-danger" id="clearAllBtn">Delete ALL guests</button>
+        </div>
+
+        <p class="app-version">Wedding Guest List · synced via Firebase · works offline</p>
+      </section>
+    </main>
+
+    <nav class="tabbar">
+      <button class="tab active" data-view="dashboard"><span class="ti">📊</span><span>Dash</span></button>
+      <button class="tab" data-view="guests"><span class="ti">👥</span><span>Guests</span></button>
+      <button class="tab fab-tab" id="addGuestTab"><span class="fab">＋</span></button>
+      <button class="tab" data-view="functions"><span class="ti">🎉</span><span>Events</span></button>
+      <button class="tab" data-view="more"><span class="ti">⚙︎</span><span>More</span></button>
+    </nav>
+  </div>
+
+  <!-- ============ Guest editor modal ============ -->
+  <div class="modal" id="guestModal" hidden>
+    <div class="modal-sheet">
+      <div class="modal-head">
+        <button class="btn-ghost" id="guestCancel">Cancel</button>
+        <h2 id="guestModalTitle">Add Guest</h2>
+        <button class="btn-ghost strong" id="guestSave">Save</button>
+      </div>
+      <form id="guestForm" class="modal-body">
+        <label class="field">City
+          <input type="text" id="gCity" list="cityList" placeholder="e.g. Lucknow" required />
+          <datalist id="cityList"></datalist>
+        </label>
+        <label class="field">Head of family
+          <input type="text" id="gName" placeholder="e.g. Mr. Ahmed Khan" required />
+        </label>
+
+        <div class="field">Number of people
+          <div class="people-row">
+            <button type="button" class="step" id="peopleMinus">−</button>
+            <input type="number" id="gPeople" min="1" value="1" inputmode="numeric" />
+            <button type="button" class="step" id="peoplePlus">＋</button>
+            <button type="button" class="chip-toggle" id="soloBtn">Solo</button>
+          </div>
+        </div>
+
+        <label class="field">Note <span class="opt">(optional)</span>
+          <textarea id="gNote" rows="2" placeholder="Relationship, who knows them, etc."></textarea>
+        </label>
+
+        <label class="field">Invitation type
+          <select id="gType">
+            <option value="WhatsApp + Call">WhatsApp + Call</option>
+            <option value="In-Person Card">In-Person Card</option>
+          </select>
+        </label>
+
+        <div class="field">Invitation status
+          <div class="seg" id="gStatus">
+            <button type="button" data-val="pending" class="active">Not Yet</button>
+            <button type="button" data-val="done">Done</button>
+          </div>
+        </div>
+
+        <div class="field">Functions invited to
+          <div class="check-grid" id="gFunctions"></div>
+        </div>
+
+        <div class="field toggle-field">
+          <span>Needs accommodation</span>
+          <div class="seg small" id="gAccom">
+            <button type="button" data-val="no" class="active">No</button>
+            <button type="button" data-val="yes">Yes</button>
+          </div>
+        </div>
+
+        <div class="field toggle-field">
+          <span>Needs conveyance for Barat</span>
+          <div class="seg small" id="gConvey">
+            <button type="button" data-val="no" class="active">No</button>
+            <button type="button" data-val="yes">Yes</button>
+          </div>
+        </div>
+
+        <div class="audit-box" id="gAudit" hidden></div>
+
+        <button type="button" class="btn-danger full" id="guestDelete" hidden>Delete this guest</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============ Generic confirm dialog ============ -->
+  <div class="modal center" id="confirmModal" hidden>
+    <div class="dialog">
+      <h3 id="confirmTitle">Are you sure?</h3>
+      <p id="confirmMsg"></p>
+      <div class="dialog-btns">
+        <button class="btn-ghost" id="confirmCancel">Cancel</button>
+        <button class="btn-primary" id="confirmOk">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ Duplicate guest dialog ============ -->
+  <div class="modal center" id="dupModal" hidden>
+    <div class="dialog">
+      <h3>Possible duplicate</h3>
+      <p id="dupMsg"></p>
+      <div class="dialog-btns stacked">
+        <button class="btn-primary" id="dupEdit">Edit the existing guest</button>
+        <button class="btn-secondary" id="dupNew">Add as a new person</button>
+        <button class="btn-ghost" id="dupCancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ Invite code dialog ============ -->
+  <div class="modal center" id="inviteModal" hidden>
+    <div class="dialog">
+      <h3>Invite a family member</h3>
+      <p>Share this code (or link). It works once and expires in 24 hours.</p>
+      <div class="code-box" id="inviteCodeBox"></div>
+      <div class="dialog-btns stacked">
+        <button class="btn-primary" id="copyInviteLink">Copy invite link</button>
+        <button class="btn-secondary" id="copyInviteCode">Copy code only</button>
+        <button class="btn-ghost" id="inviteClose">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" hidden></div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

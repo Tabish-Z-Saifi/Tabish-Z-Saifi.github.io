@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#7a1f3d" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Guest List" />
+  <title>Wedding Guest List</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icon.svg" />
+  <link rel="icon" href="icon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
+</head>
+<body>
+  <!-- ===== Header ===== -->
+  <header class="app-header">
+    <div class="brand">
+      <span class="brand-mark">❤</span>
+      <span class="brand-text">Guest List</span>
+    </div>
+    <div class="header-count" id="headerCount"></div>
+  </header>
+
+  <!-- ===== Views ===== -->
+  <main id="main">
+
+    <!-- Dashboard -->
+    <section id="view-dashboard" class="view active">
+      <h1 class="view-title">Dashboard</h1>
+
+      <div class="card progress-card">
+        <div class="progress-head">
+          <span>Invitations Done</span>
+          <span id="progressLabel">0 / 0</span>
+        </div>
+        <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+        <div class="progress-sub">
+          <span class="pill done"><b id="statDone">0</b> done</span>
+          <span class="pill pending"><b id="statPending">0</b> not yet</span>
+        </div>
+      </div>
+
+      <div class="stat-grid">
+        <div class="card stat"><div class="stat-num" id="statGuests">0</div><div class="stat-lbl">Families</div></div>
+        <div class="card stat"><div class="stat-num" id="statPeople">0</div><div class="stat-lbl">Total People</div></div>
+        <div class="card stat"><div class="stat-num" id="statAccom">0</div><div class="stat-lbl">Need Stay</div></div>
+        <div class="card stat"><div class="stat-num" id="statConvey">0</div><div class="stat-lbl">Need Barat Ride</div></div>
+      </div>
+
+      <h2 class="section-title">People per Function</h2>
+      <div class="card" id="dashFunctions"><p class="empty-mini">No functions yet.</p></div>
+
+      <h2 class="section-title">People per City</h2>
+      <div class="card" id="dashCities"><p class="empty-mini">No guests yet.</p></div>
+    </section>
+
+    <!-- Guests -->
+    <section id="view-guests" class="view">
+      <h1 class="view-title">Guests</h1>
+
+      <div class="search-row">
+        <input type="search" id="searchInput" placeholder="Search by name…" autocomplete="off" />
+        <button class="btn-filter" id="filterToggle" aria-label="Filters">⚙︎<span class="filter-badge" id="filterBadge"></span></button>
+      </div>
+
+      <div class="filters" id="filtersPanel" hidden>
+        <label>City
+          <select id="fCity"><option value="">All</option></select>
+        </label>
+        <label>Function
+          <select id="fFunction"><option value="">All</option></select>
+        </label>
+        <label>Status
+          <select id="fStatus">
+            <option value="">All</option>
+            <option value="done">Done</option>
+            <option value="pending">Not Yet</option>
+          </select>
+        </label>
+        <label>Type
+          <select id="fType">
+            <option value="">All</option>
+            <option value="WhatsApp + Call">WhatsApp + Call</option>
+            <option value="In-Person Card">In-Person Card</option>
+          </select>
+        </label>
+        <label>Accommodation
+          <select id="fAccom"><option value="">All</option><option value="yes">Yes</option><option value="no">No</option></select>
+        </label>
+        <label>Conveyance
+          <select id="fConvey"><option value="">All</option><option value="yes">Yes</option><option value="no">No</option></select>
+        </label>
+        <button class="btn-ghost full" id="clearFilters">Clear filters</button>
+      </div>
+
+      <div class="list-meta" id="listMeta"></div>
+      <div id="guestList"></div>
+    </section>
+
+    <!-- Functions -->
+    <section id="view-functions" class="view">
+      <h1 class="view-title">Functions</h1>
+      <p class="hint">Add the events for your wedding. New functions start as “Not Invited” for everyone.</p>
+      <div class="add-row">
+        <input type="text" id="newFunctionInput" placeholder="e.g. Mehendi, Barat, Reception…" />
+        <button class="btn-primary" id="addFunctionBtn">Add</button>
+      </div>
+      <div id="functionList"></div>
+    </section>
+
+    <!-- Settings / Sync -->
+    <section id="view-settings" class="view">
+      <h1 class="view-title">Sync &amp; Export</h1>
+
+      <div class="card">
+        <h2 class="card-title">Backup &amp; Sync between devices</h2>
+        <p class="hint">Your data lives only in this browser. Use Export/Import to move it between your iPhone and MacBook, or to keep a backup.</p>
+        <div class="btn-stack">
+          <button class="btn-primary" id="exportJsonBtn">⬇︎ Export Data (JSON)</button>
+          <button class="btn-secondary" id="importJsonBtn">⬆︎ Import Data (JSON)</button>
+          <input type="file" id="importFile" accept="application/json,.json" hidden />
+        </div>
+      </div>
+
+      <div class="card">
+        <h2 class="card-title">Export to PDF</h2>
+        <p class="hint">A printable list grouped by city — names, head-count and functions. Great for reuse at future weddings.</p>
+        <button class="btn-primary" id="exportPdfBtn">📄 Export to PDF</button>
+      </div>
+
+      <div class="card help">
+        <h2 class="card-title">How syncing works</h2>
+        <ol class="help-list">
+          <li><b>Export</b> your data on the device you’ve been using — a <code>.json</code> file is saved/shared.</li>
+          <li><b>Send it to yourself</b> via AirDrop, WhatsApp, or email.</li>
+          <li>Open this app on the other device and tap <b>Import Data</b>, pick the file.</li>
+          <li>Choose <b>Merge</b> (combine) or <b>Replace</b> (overwrite) when asked.</li>
+        </ol>
+        <p class="hint">Tip: there’s no automatic cloud sync — always export the latest before switching devices.</p>
+      </div>
+
+      <div class="card danger-zone">
+        <h2 class="card-title">Danger zone</h2>
+        <button class="btn-danger" id="clearAllBtn">Delete ALL data</button>
+      </div>
+
+      <p class="app-version">Wedding Guest List · works offline · no account needed</p>
+    </section>
+  </main>
+
+  <!-- ===== Bottom nav ===== -->
+  <nav class="tabbar">
+    <button class="tab active" data-view="dashboard"><span class="ti">📊</span><span>Dash</span></button>
+    <button class="tab" data-view="guests"><span class="ti">👥</span><span>Guests</span></button>
+    <button class="tab fab-tab" id="addGuestTab"><span class="fab">＋</span></button>
+    <button class="tab" data-view="functions"><span class="ti">🎉</span><span>Events</span></button>
+    <button class="tab" data-view="settings"><span class="ti">⚙︎</span><span>Sync</span></button>
+  </nav>
+
+  <!-- ===== Guest editor modal ===== -->
+  <div class="modal" id="guestModal" hidden>
+    <div class="modal-sheet">
+      <div class="modal-head">
+        <button class="btn-ghost" id="guestCancel">Cancel</button>
+        <h2 id="guestModalTitle">Add Guest</h2>
+        <button class="btn-ghost strong" id="guestSave">Save</button>
+      </div>
+      <form id="guestForm" class="modal-body">
+        <label class="field">City
+          <input type="text" id="gCity" list="cityList" placeholder="e.g. Lucknow" required />
+          <datalist id="cityList"></datalist>
+        </label>
+        <label class="field">Head of family
+          <input type="text" id="gName" placeholder="e.g. Mr. Ahmed Khan" required />
+        </label>
+
+        <div class="field">Number of people
+          <div class="people-row">
+            <button type="button" class="step" id="peopleMinus">−</button>
+            <input type="number" id="gPeople" min="1" value="1" inputmode="numeric" />
+            <button type="button" class="step" id="peoplePlus">＋</button>
+            <button type="button" class="chip-toggle" id="soloBtn">Solo</button>
+          </div>
+        </div>
+
+        <label class="field">Note <span class="opt">(optional)</span>
+          <textarea id="gNote" rows="2" placeholder="Relationship, who knows them, etc."></textarea>
+        </label>
+
+        <label class="field">Invitation type
+          <select id="gType">
+            <option value="WhatsApp + Call">WhatsApp + Call</option>
+            <option value="In-Person Card">In-Person Card</option>
+          </select>
+        </label>
+
+        <div class="field">Invitation status
+          <div class="seg" id="gStatus">
+            <button type="button" data-val="pending" class="active">Not Yet</button>
+            <button type="button" data-val="done">Done</button>
+          </div>
+        </div>
+
+        <div class="field">Functions invited to
+          <div class="check-grid" id="gFunctions"></div>
+        </div>
+
+        <div class="field toggle-field">
+          <span>Needs accommodation</span>
+          <div class="seg small" id="gAccom">
+            <button type="button" data-val="no" class="active">No</button>
+            <button type="button" data-val="yes">Yes</button>
+          </div>
+        </div>
+
+        <div class="field toggle-field">
+          <span>Needs conveyance for Barat</span>
+          <div class="seg small" id="gConvey">
+            <button type="button" data-val="no" class="active">No</button>
+            <button type="button" data-val="yes">Yes</button>
+          </div>
+        </div>
+
+        <button type="button" class="btn-danger full" id="guestDelete" hidden>Delete this guest</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ===== Toast ===== -->
+  <div id="toast" class="toast" hidden></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

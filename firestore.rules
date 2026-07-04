@@ -1,0 +1,70 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+
+    // Each auth user has a private pointer doc: which account + profile name.
+    match /users/{uid} {
+      allow read, write: if signedIn() && request.auth.uid == uid;
+    }
+
+    // Invite codes. Readable only by direct doc id (get), never listable,
+    // so codes cannot be enumerated.
+    match /invites/{code} {
+      allow get: if signedIn();
+      allow list: if false;
+      allow create: if signedIn()
+        && request.resource.data.accountId is string
+        && request.resource.data.usedBy == null
+        && exists(/databases/$(database)/documents/accounts/$(request.resource.data.accountId)/members/$(request.auth.uid));
+      // The joining user marks the code as used (nothing else may change).
+      allow update: if signedIn()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['usedBy', 'usedAt'])
+        && resource.data.usedBy == null
+        && request.resource.data.usedBy == request.auth.uid;
+      allow delete: if signedIn()
+        && exists(/databases/$(database)/documents/accounts/$(resource.data.accountId)/members/$(request.auth.uid));
+    }
+
+    match /accounts/{accountId} {
+      function isMember() {
+        return signedIn()
+          && exists(/databases/$(database)/documents/accounts/$(accountId)/members/$(request.auth.uid));
+      }
+      function validInvite(code) {
+        return code is string
+          && get(/databases/$(database)/documents/invites/$(code)).data.accountId == accountId
+          && get(/databases/$(database)/documents/invites/$(code)).data.usedBy == null
+          && get(/databases/$(database)/documents/invites/$(code)).data.expiresAt > request.time;
+      }
+
+      // Anyone signed in can create an account they own; only members can read/update.
+      allow create: if signedIn() && request.resource.data.createdBy == request.auth.uid;
+      allow get, list: if isMember();
+      allow update: if isMember();
+      allow delete: if false;
+
+      // One member doc per auth user; membership IS access.
+      match /members/{uid} {
+        allow read: if isMember();
+        allow create: if signedIn() && request.auth.uid == uid && (
+          // bootstrap: the account creator adds themself
+          get(/databases/$(database)/documents/accounts/$(accountId)).data.createdBy == request.auth.uid
+          // or: joining with a valid, unused, unexpired invite code
+          || validInvite(request.resource.data.inviteCode)
+        );
+        allow update: if isMember() && request.auth.uid == uid;
+        allow delete: if isMember();   // any member can remove access (incl. their own)
+      }
+
+      match /guests/{guestId} {
+        allow read, write: if isMember();
+      }
+
+      match /settings/{docId} {
+        allow read, write: if isMember();
+      }
+    }
+  }
+}

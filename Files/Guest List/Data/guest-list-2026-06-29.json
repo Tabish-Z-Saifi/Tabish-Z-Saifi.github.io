@@ -1,0 +1,71 @@
+{
+  "app": "wedding-guest-list",
+  "version": 1,
+  "exportedAt": "2026-06-29T02:48:22.496Z",
+  "data": {
+    "functions": [
+      {
+        "id": "mqylox1y99s40",
+        "name": "Haldi"
+      },
+      {
+        "id": "mqylox1yd4gbk",
+        "name": "Niqqah"
+      },
+      {
+        "id": "mqylox1yea7qn",
+        "name": "Reception"
+      }
+    ],
+    "guests": [
+      {
+        "id": "mqylqu4yzx4mn",
+        "city": "Aligarh",
+        "name": "Aslam Mama",
+        "people": 5,
+        "note": "Mama",
+        "type": "In-Person Card",
+        "status": "pending",
+        "functions": [
+          "mqylox1y99s40",
+          "mqylox1yd4gbk",
+          "mqylox1yea7qn"
+        ],
+        "accommodation": true,
+        "conveyance": false
+      },
+      {
+        "id": "mqylrxylcqs89",
+        "city": "Aligarh",
+        "name": "Javed Mama",
+        "people": 8,
+        "note": "",
+        "type": "In-Person Card",
+        "status": "pending",
+        "functions": [
+          "mqylox1y99s40",
+          "mqylox1yd4gbk",
+          "mqylox1yea7qn"
+        ],
+        "accommodation": true,
+        "conveyance": false
+      },
+      {
+        "id": "mqyltjkmki13j",
+        "city": "Shamli",
+        "name": "Raja Bhai",
+        "people": 3,
+        "note": "",
+        "type": "WhatsApp + Call",
+        "status": "pending",
+        "functions": [
+          "mqylox1y99s40",
+          "mqylox1yd4gbk",
+          "mqylox1yea7qn"
+        ],
+        "accommodation": false,
+        "conveyance": false
+      }
+    ]
+  }
+}
